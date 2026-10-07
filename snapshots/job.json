@@ -1,0 +1,11 @@
+{
+  "input": "gripper_mx64_ph42.step",
+  "mode": "view",
+  "outputs": [
+    { "path": "snapshots/iso.png", "camera": "iso" },
+    { "path": "snapshots/iso_opposite.png", "camera": { "direction": [-1, 1, -0.8] } },
+    { "path": "snapshots/front_ortho.png", "camera": "front" },
+    { "path": "snapshots/top_ortho.png", "camera": "top" }
+  ],
+  "render": { "viewLabels": true, "padding": 0.12, "sizeProfile": "assembly" }
+}
