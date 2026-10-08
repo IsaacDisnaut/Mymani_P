@@ -39,7 +39,9 @@ ROBOTIS e-Manual drawings section) is imported as-is. Every MX-64 interface
 dimension below was measured from that STEP: horn dia 28 with 8x M2.5 on
 PCD 22, horn boss, front mounting ears (8x M2.5 tapped thru) and the raised
 centre body. The servo bolts to the back-plate rear face by its ears.
-PH42 (J6): simplified envelope; its horn bolt pattern is still ASSUMED.
+PH42 (J6): the PH42-020-S300-R STEP supplied with the project
+(parts/PH42-020-S300-R.stp) is imported as-is; the adapter flange holes,
+dowel holes and centring boss were measured from it.
 """
 
 import math
@@ -97,17 +99,28 @@ bushing_hole = 6.2
 socket_clear_r = 5.0            # radius needed around a nut for a socket / nut driver
 
 # ---------------------------------------------------------------- J6: PH42-020-S300-R
-j6_body_w = 42.0                # ROBOTIS case 42 x 84 x 42
-j6_body_len = 84.0
-j6_horn_dia = 36.0              # ASSUMED output horn diameter
-j6_horn_thk = 3.0
-j6_bolt_count = 8               # ASSUMED output horn pattern: 8x M3
-j6_bolt_pcd = 28.0              # ASSUMED PCD
+# Measured from parts/PH42-020-S300-R.stp. STEP frame: output axis = +Y through (0, 0),
+# output horn face at y = 6. STEP (x, y, z) -> gripper (x, -z, y - 6).
+j6_step_path = "parts/PH42-020-S300-R.stp"
+j6_step_horn_face_y = 6.0
+j6_horn_dia = 33.0              # rotating output horn (face), 2.5 proud of the case ring
+j6_horn_tap_depth = 5.6         # 8x M3 tapped (dia 2.5 drill), ~5.65 deep
+j6_horn_holes = [               # (x, y) in the gripper frame: NOT an even 45 deg pattern
+    (12.0, 6.0), (6.0, 12.0), (-6.0, 12.0), (-12.0, 6.0),
+    (-12.0, -6.0), (-6.0, -12.0), (6.0, -12.0), (12.0, -6.0),
+]
+j6_dowel_holes = [(12.0, 0.0), (0.0, 12.0), (-12.0, 0.0), (0.0, -12.0)]   # 4x dia 2, 3 deep
+j6_dowel_dia = 2.0
+j6_recess_dia = 20.0            # centre recess in the horn face, 2 deep
+j6_recess_depth = 2.0
 
 # ---------------------------------------------------------------- J6 adapter flange
 flange_dia = 66.0
 flange_thk = 6.0
 flange_screw_r = 28.0           # 4x M3 from below into the base plate, outside the PH42 body
+flange_pilot_dia = j6_recess_dia - 0.2     # centring boss into the PH42 horn recess
+flange_pilot_h = j6_recess_depth - 0.2
+dowel_pin_len = 6.0             # dia 2 x 6 dowel: 3 in the horn, 3 in the flange
 
 # ---------------------------------------------------------------- MX-64AT/AR (official STEP)
 # STEP frame: horn axis = +Z through (0, 0); +Y toward the horn end of the case.
@@ -199,18 +212,52 @@ housing_x = (mx_x[0] - housing_clear - housing_wall, mx_x[1] + housing_clear + h
 housing_y = (board_y[0] - board_standoff - housing_wall, back_y[0])
 housing_z = (base_top, max(mx_z[1], board_z[1]) + housing_clear + housing_wall)
 
+# ---------------------------------------------------------------- RealSense D435 / D435i depth camera
+# Intel RealSense D400 datasheet (337029-017): 90 x 25 x 25.05 mm, 75 g; back face 2x M3
+# 45 mm apart (max insertion 3 mm, 0.4 N*m); 1/4-20 tripod hole underneath; depth origin =
+# left imager centre, 17.5 mm from the tripod centreline, 4.2 mm behind the front glass;
+# imager baseline 50 mm; min-Z 105 mm @ 424x240, 195 mm @ 848x480, 280 mm @ 1280x720.
+# Mounted eye-in-hand looking along +Z (approach axis), bottom (tripod) toward -Y.
+cam_w = 90.0                    # along X
+cam_h = 25.0                    # along Y
+cam_d = 25.05                   # along Z (optical axis)
+cam_m3_spacing = 45.0
+cam_m3_insert_max = 3.0
+cam_left_imager_x = 17.5        # camera's left = +X when it looks along +Z with up = +Y
+cam_right_imager_x = cam_left_imager_x - 50.0
+cam_rgb_x = cam_left_imager_x + 15.0
+cam_projector_x = cam_left_imager_x - 29.0
+cam_depth_origin_behind_glass = 4.2
+cbr_thk = 4.0                   # flat camera bracket plate on the base plate
+cam_gap_to_front_plate = 0.5
+cam_centre_y = front_y[1] + cam_gap_to_front_plate + cam_h / 2     # 16: camera right against the front plate
+cam_back_z = base_top + cbr_thk                                     # 16: as low as it goes (on the bracket plate)
+cam_x = (-cam_w / 2, cam_w / 2)
+cam_y = (cam_centre_y - cam_h / 2, cam_centre_y + cam_h / 2)
+cam_z = (cam_back_z, cam_back_z + cam_d)
+
+# camera bracket: flat plate under the D435. The camera is screwed to it first (2x M3 from the
+# plate underside, counterbored, low heads); the plate then screws to the base plate with 2x M3
+# from above, in front of the camera where a driver reaches them.
+cbr_half_w = 28.0               # clear of the front-plate tabs (moved to x = +/- 50, +/- 61)
+cbr_y = (cam_y[0], cam_y[1] + 11.5)
+cbr_cam_cbore_dia = 6.5
+cbr_cam_cbore_depth = 2.2       # low-head M3 (2 mm head) sits below the plate underside
+cbr_foot_screw_xy = [(x, cam_y[1] + 6.0) for x in (-15.0, 15.0)]       # M3 into the base plate, from above
+cam_screw_xy = [(x, cam_centre_y) for x in (-cam_m3_spacing / 2, cam_m3_spacing / 2)]  # M3 x 4 into the D435 back
+
 # ---------------------------------------------------------------- plates / tabs
 tab_thk = 3.0
 tab_w = 10.0
 plate_half_w = 66.0
 back_plate_top = housing_z[1]                                    # covers the MX-64 face
 front_plate_top = gear_axis_z + gear_tip_r + 5.5                 # covers the gears, below the coupler sweep
-base_y = (housing_y[0], flange_screw_r + 6.0)
+base_y = (housing_y[0], max(flange_screw_r + 6.0, cbr_y[1] + 2.0))
 
 # tab screw positions (x, y). Rear tabs on the back plate avoid the housing; their screw
 # axis stays behind the pivot nuts so a driver reaches them from above.
 back_tab_xy = [(x, back_y[0] - 6.0) for x in (-61.0, 12.0, 36.0, 61.0)]
-front_tab_xy = [(x, front_y[1] + 6.0) for x in (-61.0, -34.0, 34.0, 61.0)]
+front_tab_xy = [(x, front_y[1] + 6.0) for x in (-61.0, -50.0, 50.0, 61.0)]   # outside the D435 footprint (x +/- 45)
 housing_tab_xy = [
     (x, y)
     for x in (housing_x[0] - 3.0, housing_x[1] + 3.0)
@@ -350,10 +397,7 @@ def plate_tab(x, y_from, y_to):
 
 # ================================================================= static parts
 def j6_bolt_xy():
-    return [
-        (j6_bolt_pcd / 2 * math.cos(2 * math.pi * i / j6_bolt_count), j6_bolt_pcd / 2 * math.sin(2 * math.pi * i / j6_bolt_count))
-        for i in range(j6_bolt_count)
-    ]
+    return list(j6_horn_holes)
 
 
 def flange_screw_xy():
@@ -361,17 +405,20 @@ def flange_screw_xy():
 
 
 def make_j6():
-    body = Pos(0, 0, -j6_body_len / 2 - j6_horn_thk / 2) * Box(j6_body_w, j6_body_w, j6_body_len - j6_horn_thk)
-    body = fillet(body.edges().filter_by(Axis.Z), 3.0)
-    horn = Pos(0, 0, -j6_horn_thk / 2) * Cylinder(j6_horn_dia / 2, j6_horn_thk)
-    for x, y in j6_bolt_xy():
-        horn -= Pos(x, y, -j6_horn_thk / 2) * Cylinder(m3_tap / 2, j6_horn_thk)
-    return body, horn
+    """PH42-020-S300-R STEP, output horn face on z = 0, output axis = +Z."""
+    src = Path(globals().get("__file__", "gripper_mx64_ph42.py")).resolve().parent / j6_step_path
+    ph42 = import_step(str(src))
+    # STEP x -> X, STEP y -> Z, STEP z -> -Y
+    place = Plane(origin=Vector(0, 0, -j6_step_horn_face_y), x_dir=Vector(1, 0, 0), z_dir=Vector(0, -1, 0))
+    return place.location * ph42
 
 
 def make_j6_flange():
     """Round adapter: counterbored M3 into the J6 horn (fitted first), clearance M3 up into the base plate."""
     fl = Pos(0, 0, flange_thk / 2) * Cylinder(flange_dia / 2, flange_thk)
+    fl += Pos(0, 0, -flange_pilot_h / 2) * Cylinder(flange_pilot_dia / 2, flange_pilot_h + 0.01)
+    for x, y in j6_dowel_holes:
+        fl -= Pos(x, y, (flange_thk - flange_pilot_h) / 2) * Cylinder(j6_dowel_dia / 2, flange_thk + flange_pilot_h)
     for x, y in j6_bolt_xy():
         fl -= Pos(x, y, flange_thk / 2) * Cylinder(m3_clear / 2, flange_thk)
         fl -= Pos(x, y, flange_thk - m3_cbore_depth / 2) * Cylinder(m3_cbore_dia / 2, m3_cbore_depth)
@@ -384,7 +431,7 @@ def make_base_plate():
     yc = (base_y[0] + base_y[1]) / 2
     plate = Pos(0, yc, flange_top + base_thk / 2) * Box(2 * plate_half_w, base_y[1] - base_y[0], base_thk)
     plate = fillet(plate.edges().filter_by(Axis.Z), 4.0)
-    for x, y in flange_screw_xy() + back_tab_xy + front_tab_xy + housing_tab_xy:
+    for x, y in flange_screw_xy() + back_tab_xy + front_tab_xy + housing_tab_xy + cbr_foot_screw_xy:
         plate -= Pos(x, y, flange_top + base_thk / 2) * Cylinder(m3_tap / 2, base_thk)
     return plate
 
@@ -494,6 +541,35 @@ def make_mx64():
     return place.location * servo
 
 
+def stadium_xy(w, h):
+    return Rectangle(w - h, h) + Pos(-(w - h) / 2, 0) * Circle(h / 2) + Pos((w - h) / 2, 0) * Circle(h / 2)
+
+
+def make_d435():
+    """RealSense D435/D435i envelope from the datasheet drawing (lens features cosmetic)."""
+    body = Pos(0, cam_centre_y, cam_z[0]) * extrude(stadium_xy(cam_w, cam_h), amount=cam_d)
+    lenses = [(cam_left_imager_x, 4.5), (cam_right_imager_x, 4.5), (cam_rgb_x, 3.5), (cam_projector_x, 5.0)]
+    for lx, r in lenses:
+        body -= Pos(lx, cam_centre_y, cam_z[1] - 0.5) * Cylinder(r, 1.0, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    for x, y in cam_screw_xy:                                     # 2x M3 tapped, 3 deep, in the back face
+        body -= Pos(x, y, cam_z[0] - 0.01) * Cylinder(m3_tap / 2, cam_m3_insert_max, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    body -= axis_cyl((0.0, cam_y[0] - 0.01, (cam_z[0] + cam_z[1]) / 2), (0, 1, 0), 6.0, 5.1)   # 1/4-20 tripod
+    return body
+
+
+def make_camera_bracket():
+    """Flat plate under the D435: counterbored camera screws from below, 2 screws into the base plate."""
+    z0 = base_top
+    br = Pos(0, sum(cbr_y) / 2, z0 + cbr_thk / 2) * Box(2 * cbr_half_w, cbr_y[1] - cbr_y[0], cbr_thk)
+    br = fillet(br.edges().filter_by(Axis.Z), 3.0)
+    for x, y in cbr_foot_screw_xy:
+        br -= Pos(x, y, z0 + cbr_thk / 2) * Cylinder(m3_clear / 2, cbr_thk + 0.02)
+    for x, y in cam_screw_xy:
+        br -= Pos(x, y, z0 + cbr_thk / 2) * Cylinder(m3_clear / 2, cbr_thk + 0.02)
+        br -= Pos(x, y, z0 + cbr_cam_cbore_depth / 2 - 0.01) * Cylinder(cbr_cam_cbore_dia / 2, cbr_cam_cbore_depth + 0.02)
+    return br
+
+
 def make_adapter_board():
     pcb_thk = 1.6
     sk = Pos((board_x[0] + board_x[1]) / 2, (board_z[0] + board_z[1]) / 2) * Rectangle(board_w, board_len)
@@ -576,12 +652,8 @@ def pick_gear_phase(theta: float):
 theta = crank_angle_deg
 asm = AssemblyHelper("gripper_mx64_on_ph42_j6")
 
-j6_body, j6_horn = make_j6()
-asm.add_module(
-    "j6_ph42_020_s300_r_standin",
-    [asm.feature(j6_body, "ph42_case_envelope", color=DARK), asm.feature(j6_horn, "ph42_output_horn", color=STEEL)],
-)
-j6_face = asm.rigid_frame(j6_horn, "j6_output_flange_face", Location((0, 0, 0)))
+j6 = asm.add(make_j6(), "ph42_020_s300_r", "j6_step", color=DARK)
+j6_face = asm.rigid_frame(j6, "j6_output_flange_face", Location((0, 0, 0)))
 flange = asm.add(make_j6_flange(), "j6_adapter_flange", color=ALU)
 flange_under = asm.rigid_frame(flange, "flange_underside", Location((0, 0, 0)))
 asm.face_to_face(j6_face, flange_under, label="j6_horn_to_adapter_flange")
@@ -592,6 +664,9 @@ asm.add(make_front_plate(), "front_plate", "pivot_plate", color=ALU)
 asm.add(make_mx64_housing(), "mx64_housing", "cover_with_adapter_bay", color=ALU)
 
 asm.add(make_mx64(), "mx64at_ar", "robotis_official_step", color=DARK)
+asm.add(make_camera_bracket(), "camera_bracket", "d435", color=ALU)
+asm.add(make_d435(), "realsense_d435", "depth_camera", color=DARK)
+
 board_pcb, board_comp, pcb_thk = make_adapter_board()
 asm.add_module(
     "dynamixel_adapter_board_envelope",
@@ -640,8 +715,12 @@ asm.add_module("pivot_bolts_bushings_nuts", pivot_parts)
 screws = []
 for i, (x, y) in enumerate(j6_bolt_xy()):
     screws.append(asm.feature(
-        cap_screw((x, y, flange_thk - m3_cbore_depth), (0, 0, -1), flange_thk - m3_cbore_depth + j6_horn_thk, m3_head_dia, m3_head_h, m3_tap),
+        cap_screw((x, y, flange_thk - m3_cbore_depth), (0, 0, -1), flange_thk - m3_cbore_depth + 5.0, m3_head_dia, m3_head_h, m3_tap),
         "m3_screw", "j6_horn_to_flange", i, color=STEEL))
+for i, (x, y) in enumerate(j6_dowel_holes):
+    screws.append(asm.feature(
+        Pos(x, y, 0) * Cylinder(j6_dowel_dia / 2, dowel_pin_len),
+        "dowel_pin", "j6_horn_to_flange", i, color=STEEL))
 for i, (x, y) in enumerate(flange_screw_xy()):
     screws.append(asm.feature(
         cap_screw((x, y, 0.0), (0, 0, 1), flange_thk + base_thk, m3_head_dia, m3_head_h, m3_tap),
@@ -659,6 +738,15 @@ for i, (ex, ez) in enumerate(ear_hole_xz()):
     screws.append(asm.feature(
         cap_screw((ex, seat_y, ez), (0, -1, 0), (seat_y - back_y[0]) + mx_ear_thk, m2_5_head_dia, m2_5_low_head_h, m2_5_tap),
         "m2_5_screw", "mx64_ears_to_back_plate", i, color=STEEL))
+for i, (x, y) in enumerate(cbr_foot_screw_xy):
+    screws.append(asm.feature(
+        cap_screw((x, y, base_top + cbr_thk), (0, 0, -1), cbr_thk + base_thk, m3_head_dia, m3_head_h, m3_tap),
+        "m3_screw", "camera_bracket_to_base", i, color=STEEL))
+for i, (x, y) in enumerate(cam_screw_xy):
+    screws.append(asm.feature(
+        cap_screw((x, y, base_top + cbr_cam_cbore_depth), (0, 0, 1), (cbr_thk - cbr_cam_cbore_depth) + cam_m3_insert_max - 0.5,
+                  m3_head_dia, 2.0, m3_tap),
+        "m3_screw", "d435_to_bracket_low_head", i, color=STEEL))
 for i, (bx, bz) in enumerate(board_hole_positions()):
     seat_y = board_y[0] + pcb_thk
     screws.append(asm.feature(

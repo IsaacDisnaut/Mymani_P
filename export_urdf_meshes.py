@@ -29,6 +29,7 @@ PETG = 0.00127
 RUBBER = 0.0012
 MX64_MASS_G = 135.0             # ROBOTIS MX-64AT/AR catalogue mass
 BOARD_MASS_G = 20.0             # assumed adapter / junction board mass
+D435_MASS_G = 75.0              # RealSense D435 / D435i datasheet mass
 MESH_TOL = 0.05
 MESH_ANG_TOL = 0.1
 
@@ -68,6 +69,7 @@ def main():
     # ---- static parts, already in the gripper_base_link frame
     servo = g.make_mx64()
     pcb, comp, _ = g.make_adapter_board()
+    cam = g.make_d435()
     base_parts = {
         "j6_adapter_flange": (g.make_j6_flange(), ALUMINIUM),
         "base_plate": (g.make_base_plate(), ALUMINIUM),
@@ -76,6 +78,8 @@ def main():
         "mx64_housing": (g.make_mx64_housing(), PETG),
         "mx64at_ar": (servo, MX64_MASS_G / servo.volume),
         "adapter_board": (pcb + comp, BOARD_MASS_G / (pcb.volume + comp.volume)),
+        "camera_bracket": (g.make_camera_bracket(), ALUMINIUM),
+        "realsense_d435": (cam, D435_MASS_G / cam.volume),
     }
 
     # ---- moving parts at crank angle 0, moved into their link frames

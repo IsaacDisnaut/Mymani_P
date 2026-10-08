@@ -7,8 +7,8 @@ so its bounding box starts at the origin, and written to stl/<label>.stl.
 Identical copies (same label prefix and volume) are written once; the
 quantity goes into stl/parts_list.csv.
 
-Purchased / reference parts are skipped: MX-64, PH42 (J6), screws, nuts,
-M4 bolts and the adapter-board envelope.
+Purchased / reference parts are skipped: MX-64, PH42 (J6), RealSense D435,
+screws, nuts, M4 bolts, dowel pins and the adapter-board envelope.
 """
 
 import csv
@@ -19,7 +19,7 @@ from build123d import Axis, Pos, export_stl
 import gripper_mx64_ph42 as gripper
 
 OUT = Path(__file__).resolve().parent / "stl"
-SKIP_PREFIXES = ("mx64at_ar", "ph42_", "m3_screw", "m2_5_screw", "m4_bolt", "m4_nut", "adapter_")
+SKIP_PREFIXES = ("mx64at_ar", "ph42_", "m3_screw", "m2_5_screw", "m4_bolt", "m4_nut", "adapter_", "dowel_pin", "realsense_d435")
 LINEAR_TOL = 0.02               # same mesh density as the CAD skill default
 ANGULAR_TOL = 0.05
 
@@ -36,8 +36,8 @@ def leaves(shape):
 def lay_flat(part, label):
     bb = part.bounding_box()
     size = {"X": bb.size.X, "Y": bb.size.Y, "Z": bb.size.Z}
-    if label.startswith("mx64_housing"):
-        part = part.rotate(Axis.X, 180)                     # closed top on the bed
+    if label.startswith(("mx64_housing", "j6_adapter_flange")):
+        part = part.rotate(Axis.X, 180)                     # closed top / flat face on the bed (flange pilot boss up)
     elif label.startswith("pivot_bushing"):
         part = part.rotate(Axis.X, 90)                      # bore axis (Y) -> Z, stands on its end
     else:

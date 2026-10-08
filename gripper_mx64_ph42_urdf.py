@@ -16,6 +16,10 @@ Frames (all link frames are parallel to gripper_base_link at crank angle 0):
   left/right_finger_link  origin on the coupler pivot A' (crank tip)
   grip_center_link        fixed, between the pads at crank angle 0 (z = 172 mm);
                           the true grip centre drops along an arc as the jaws open.
+  camera_link             RealSense D435 depth origin (left imager centre, 4.2 mm behind
+                          the front glass), ROS convention: x forward (= gripper +Z),
+                          y left (= gripper +X), z up (= gripper +Y).
+  camera_depth_optical_frame  child of camera_link, optical convention z forward, x right, y down.
 
 Joints:
   left_crank_joint   actuated (MX-64). Positive = jaws open. Axis -Y, because the
@@ -47,6 +51,16 @@ GEAR_AXIS_Z_MM = 61.0
 CRANK_LEN_MM = 55.0
 GRIP_CENTER_Z_MM = GEAR_AXIS_Z_MM + CRANK_LEN_MM + 84.0 - 3.0 - 50.0 / 2   # pad centre at crank angle 0
 
+# RealSense D435 (see gripper_mx64_ph42.py camera block)
+CAM_LEFT_IMAGER_X_MM = 17.5
+CAM_CENTRE_Y_MM = 16.0
+CAM_FRONT_GLASS_Z_MM = 16.0 + 25.05
+CAM_DEPTH_ORIGIN_BEHIND_GLASS_MM = 4.2
+CAMERA_LINK_XYZ_MM = (CAM_LEFT_IMAGER_X_MM, CAM_CENTRE_Y_MM, CAM_FRONT_GLASS_Z_MM - CAM_DEPTH_ORIGIN_BEHIND_GLASS_MM)
+# camera_link axes expressed in gripper_base_link: x fwd = +Z, y left = +X, z up = +Y
+CAMERA_LINK_AXES = ((0.0, 0.0, 1.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+OPTICAL_FROM_CAMERA_LINK_RPY = (-math.pi / 2, 0.0, -math.pi / 2)    # REP-103 optical frame
+
 A_L = (-GEAR_PITCH_R_MM, GEAR_AXIS_Z_MM)
 A_R = (GEAR_PITCH_R_MM, GEAR_AXIS_Z_MM)
 B_L = (-GEAR_PITCH_R_MM - IDLE_OFFSET_MM, GEAR_AXIS_Z_MM)
@@ -75,6 +89,7 @@ MESH_MATERIAL = {
     "idle_link_left": "aluminium", "idle_link_right": "aluminium",
     "finger_coupler_left": "blue", "finger_coupler_right": "blue",
     "finger_pad_left": "rubber", "finger_pad_right": "rubber",
+    "camera_bracket": "aluminium", "realsense_d435": "dark",
 }
 NO_COLLISION = {"mx64at_ar", "adapter_board"}   # fully inside the housing, which carries the collision
 
@@ -104,11 +119,24 @@ def add_link(robot, name, props):
     return link
 
 
-def add_joint(robot, name, jtype, parent, child, xyz_mm, axis=None, mimic=None):
+def rpy_from_axes(x_axis, y_axis, z_axis):
+    """URDF fixed-axis roll/pitch/yaw (R = Rz*Ry*Rx) of a frame whose axes are given in the parent."""
+    r = [[x_axis[i], y_axis[i], z_axis[i]] for i in range(3)]       # columns = child axes
+    pitch = math.asin(max(-1.0, min(1.0, -r[2][0])))
+    if abs(math.cos(pitch)) > 1e-9:
+        roll = math.atan2(r[2][1], r[2][2])
+        yaw = math.atan2(r[1][0], r[0][0])
+    else:                                                              # gimbal lock: put it all in yaw
+        roll = 0.0
+        yaw = math.atan2(-r[0][1], r[1][1])
+    return (roll, pitch, yaw)
+
+
+def add_joint(robot, name, jtype, parent, child, xyz_mm, axis=None, mimic=None, rpy=(0.0, 0.0, 0.0)):
     joint = ET.SubElement(robot, "joint", {"name": name, "type": jtype})
     ET.SubElement(joint, "parent", {"link": parent})
     ET.SubElement(joint, "child", {"link": child})
-    ET.SubElement(joint, "origin", {"xyz": fmt(v * MM for v in xyz_mm), "rpy": "0 0 0"})
+    ET.SubElement(joint, "origin", {"xyz": fmt(v * MM for v in xyz_mm), "rpy": fmt(rpy)})
     if jtype == "revolute":
         ET.SubElement(joint, "axis", {"xyz": fmt(axis)})
         ET.SubElement(joint, "limit", {
@@ -131,6 +159,8 @@ def gen_urdf():
                  "right_idle_link", "left_finger_link", "right_finger_link"):
         add_link(robot, link, props[link])
     add_link(robot, "grip_center_link", None)
+    add_link(robot, "camera_link", None)
+    add_link(robot, "camera_depth_optical_frame", None)
 
     add_joint(robot, "left_crank_joint", "revolute", "gripper_base_link", "left_crank_link",
               (A_L[0], 0.0, A_L[1]), AXIS_NEG_Y)
@@ -146,4 +176,8 @@ def gen_urdf():
               (0.0, 0.0, CRANK_LEN_MM), AXIS_NEG_Y, mimic="left_crank_joint")
     add_joint(robot, "grip_center_joint", "fixed", "gripper_base_link", "grip_center_link",
               (0.0, 0.0, GRIP_CENTER_Z_MM))
+    add_joint(robot, "camera_joint", "fixed", "gripper_base_link", "camera_link",
+              CAMERA_LINK_XYZ_MM, rpy=rpy_from_axes(*CAMERA_LINK_AXES))
+    add_joint(robot, "camera_depth_optical_joint", "fixed", "camera_link", "camera_depth_optical_frame",
+              (0.0, 0.0, 0.0), rpy=OPTICAL_FROM_CAMERA_LINK_RPY)
     return robot

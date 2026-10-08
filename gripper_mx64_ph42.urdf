@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!-- cadpy:sourcePath=gripper_mx64_ph42_urdf.py -->
-<!-- cadpy:sourceHash=f4f136586d44cb264bc75bd356b19a2e411cacc08b41be3eef5c0a577ca4c1e1 -->
+<!-- cadpy:sourceHash=6588bdf57060c864f10d49d9bfa0db3b6aaa4c136052aa0412db0f750d39f27d -->
 <robot name="gripper_mx64_ph42">
   <material name="aluminium">
     <color rgba="0.72 0.74 0.78 1" />
@@ -100,10 +100,36 @@
       </geometry>
       <material name="pcb" />
     </visual>
+    <visual name="camera_bracket_visual">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="urdf_meshes/camera_bracket.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="aluminium" />
+    </visual>
+    <collision name="camera_bracket_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="urdf_meshes/camera_bracket.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+    <visual name="realsense_d435_visual">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="urdf_meshes/realsense_d435.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="dark" />
+    </visual>
+    <collision name="realsense_d435_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="urdf_meshes/realsense_d435.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
     <inertial>
-      <origin xyz="-0.00465595 -0.0212187 0.0319057" rpy="0 0 0" />
-      <mass value="0.791289" />
-      <inertia ixx="0.00107025" ixy="-9.43305e-05" ixz="5.467e-05" iyy="0.0014015" iyz="-9.80475e-07" izz="0.00150953" />
+      <origin xyz="-0.00406666 -0.0159861 0.0307265" rpy="0 0 0" />
+      <mass value="0.905847" />
+      <inertia ixx="0.00127577" ixy="-0.000113622" ixz="5.901e-05" iyy="0.00150214" iyz="4.32297e-05" izz="0.00177416" />
     </inertial>
   </link>
   <link name="left_crank_link">
@@ -253,6 +279,8 @@
     </inertial>
   </link>
   <link name="grip_center_link" />
+  <link name="camera_link" />
+  <link name="camera_depth_optical_frame" />
   <joint name="left_crank_joint" type="revolute">
     <parent link="gripper_base_link" />
     <child link="left_crank_link" />
@@ -304,5 +332,15 @@
     <parent link="gripper_base_link" />
     <child link="grip_center_link" />
     <origin xyz="0 0 0.172" rpy="0 0 0" />
+  </joint>
+  <joint name="camera_joint" type="fixed">
+    <parent link="gripper_base_link" />
+    <child link="camera_link" />
+    <origin xyz="0.0175 0.016 0.03685" rpy="0 -1.5708 -1.5708" />
+  </joint>
+  <joint name="camera_depth_optical_joint" type="fixed">
+    <parent link="camera_link" />
+    <child link="camera_depth_optical_frame" />
+    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708" />
   </joint>
 </robot>
